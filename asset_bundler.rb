@@ -195,7 +195,7 @@ END
         end
 
         # Let's assume that when flag 'watch' or 'serving' is enabled, we want dev mode
-        if context.registers[:site].config['serving'] || context.registers[:site].config['watch']
+        if context.registers[:site].config['watch']
           ret_config['dev'] = true
         end
 
