@@ -233,24 +233,42 @@ bundles from the destination folder.
 
 Default: `false`.
 
+### named_bundles:
+
+Specifies one or more named bundles to be created. No markup is created for
+named bundles, so these must be referenced manually.
+
+Named bundles are especially useful, when not referenced statically, but loaded
+dynamically. Otherwise, consider using anonymous bundles (defined inline as
+liquid block) instead.
+
+The file extension of the bundle name must match the content type (currently
+either `js` or `css`).
+
+    named_bundles:
+        first_bundle.js:
+            - path/to/file.js
+            - other/file.js
+        second_bundle.js:
+            - path/to/file.js
+            - path/to/other.js
+
+Default: `{}` (none).
+
 ### dev:
 
 **NOTE:** In v0.10 and earlier, dev mode was not enabled automatically for
 `--auto` or `--watch` mode.
 
-If set to true, enables dev mode.  When dev mode is active,
-no bundles are created and all the referenced files are
-included individually without modification.
+If set to true, enables dev mode.  When dev mode is active, no anonymous
+bundles (defined as liquid block) are created and all the referenced files are
+included individually without modification. Nevertheless, named bundles
+(defined in `_config.yml` using the `named_bundles` option) are created and
+merged, but no compression will be applied. 
 
 Dev mode is also automatically enabled when using
 `jekyll server`, `jekyll --watch` or when a top level configuration key: `dev`
 is set to true.
-
-Default: `false`.
-
-### bundle_name:
-
-Overrides bundle name. When false, MD5 hash of the content is used instead.
 
 Default: `false`.
 

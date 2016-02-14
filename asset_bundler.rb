@@ -114,7 +114,6 @@ END
       'server_url'     => '',
       'remove_bundled' => false,
       'dev'            => false,
-      'bundle_name'    => false,
       'markup_templates' => {
         'js'     =>
           Liquid::Template.parse("<script type='text/javascript' src='{{url}}'></script>\n"),
@@ -130,21 +129,29 @@ END
     @@supported_types = ['js', 'css']
     attr_reader :content, :hash, :filename, :base
 
-    def initialize(files, type, context)
-      @files    = files
-      @type     = type
-      @context  = context
-      @content  = ''
-      @hash     = ''
-      @filename = ''
+    def initialize(files, type, context, force=false, filename=nil)
+      @files      = files
+      @type       = type
+      @context    = context
+      @content    = ''
+      @hash       = ''
+      @filename   = filename
 
-      @config = Bundle.config(@context)
-      @base = @config['base_path']
+      @config     = Bundle.config(@context)
+
+      # in dev mode anonymous bundles are not merged: the generated markup
+      # references source files
+      @nomerge    = @config['dev'] && filename == nil
+      @nocompress = @config['dev']
+
+      @base       = @config['base_path']
 
       @filename_hash = Digest::MD5.hexdigest(@files.join())
-      if @@bundles.key?(@filename_hash)
+      if !force && @@bundles.key?(@filename_hash)
         @filename = @@bundles[@filename_hash].filename
         @base     = @@bundles[@filename_hash].base
+        @content  = @@bundles[@filename_hash].content
+        @hash     = @@bundles[@filename_hash].hash
       else
         load_content()
       end
@@ -210,7 +217,7 @@ END
     end
 
     def load_content()
-      if @config['dev']
+      if @nomerge
         @@bundles[@filename_hash] = self
         return
       end
@@ -241,9 +248,9 @@ END
         @content.concat("\n")
       }
 
-      @hash = @config['bundle_name'] || Digest::MD5.hexdigest(@content)
-      @filename = "#{@hash}.#{@type}"
-      cache_hash = Digest::MD5.hexdigest("#{@filename}#{@config['compress']}");
+      @hash = Digest::MD5.hexdigest(@content)
+      @filename = @filename || "#{@hash}.#{@type}"
+      cache_hash = Digest::MD5.hexdigest("#{@hash}#{@config['compress']}#{@nocompress}");
       cache_file = File.join(cache_dir(), "#{cache_hash}.#{@type}")
 
       if File.readable?(cache_file) and @config['compress'][@type]
@@ -311,7 +318,7 @@ END
     end
 
     def compress()
-      return if @config['dev']
+      return if @nocompress
 
       case @config['compress'][@type]
         when 'yui'
@@ -398,14 +405,14 @@ END
     end
 
     def markup()
-      return dev_markup() if @config['dev']
+      return nomerge_markup() if @nomerge
 
       @config['markup_templates'][@type].render(
         'url' => "#{@config['server_url']}#{@base}#{@filename}"
       )
     end
 
-    def dev_markup()
+    def nomerge_markup()
       output = ''
       @files.each {|f|
         output.concat(
@@ -448,3 +455,17 @@ Liquid::Template.register_tag('bundle'     , Jekyll::BundleTag    )
 Liquid::Template.register_tag('bundle_glob', Jekyll::BundleGlobTag)
 Liquid::Template.register_tag('dev_assets' , Jekyll::DevAssetsTag )
 
+# do this before post_write, such that remove_bundled has any effect!
+Jekyll::Hooks.register :site, :post_render do |site|
+  ((site.config['asset_bundler'] || {})['named_bundles'] || {}).each{ |k, v|
+    if k =~ /\.([^\.]+)$/
+      force_reload = true
+      type = $1.downcase()
+      context = Liquid::Context.new()
+      context.registers[:site] = site
+      Jekyll::Bundle.new(v, type, context, force_reload, k).write(site.dest)
+    else
+      raise "Cannot determine bundle type (js or css): #{k}"
+    end
+  }
+end
