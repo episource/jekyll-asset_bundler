@@ -308,7 +308,7 @@ END
       src = @context.registers[:site].source
       @files.each {|f|
         @context.registers[:site].static_files.select! {|s|
-          if s.instance_of?(StaticFile)
+          if s.is_a?(StaticFile)
             s.path != File.join(src, f)
           else
             true
