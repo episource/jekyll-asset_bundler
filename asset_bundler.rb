@@ -436,7 +436,6 @@ END
 
     def write(dest)
       dest_path = destination(dest)
-      return false if File.exists?(dest_path)
 
       FileUtils.mkdir_p(File.dirname(dest_path))
       File.open(dest_path, "w") {|o|
