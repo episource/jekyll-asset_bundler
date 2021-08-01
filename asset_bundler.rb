@@ -430,6 +430,10 @@ END
       File.join(@base, @filename)
     end
 
+    def path
+      self.relative_path
+    end
+
     def destination(dest)
       File.join(dest, @base, @filename)
     end
