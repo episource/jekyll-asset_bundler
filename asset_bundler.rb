@@ -438,6 +438,10 @@ END
       File.join(dest, @base, @filename)
     end
 
+    def write?
+      true
+    end
+
     def write(dest)
       dest_path = destination(dest)
 
